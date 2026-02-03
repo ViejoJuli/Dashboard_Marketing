@@ -5,7 +5,6 @@ from datetime import datetime
 import plotly.graph_objects as go
 from dash import Dash, dcc, html, Input, Output, callback_context
 
-
 # =========================================================
 # THEME / CONSTANTS
 # =========================================================
@@ -37,18 +36,18 @@ STAGE_COLORS = {
 }
 
 KPI_HELP = {
-    "Impressions": "Total de veces que se mostró el anuncio/contenido. Base del funnel.",
-    "CTR": "Click-Through Rate = Clicks / Impressions. Mide atractivo del creativo/copy.",
-    "Click → Lead": "Leads / Clicks. Mide landing + fricción del formulario + oferta.",
-    "Lead → MQL": "MQL / Leads. Mide calidad del lead y el scoring de marketing.",
-    "MQL → SQL": "SQL / MQL. Mide alineación marketing–ventas y proceso de calificación.",
-    "SQL → Won": "Won / SQL. Mide cierre final del pipeline comercial.",
+    "Impressions": "Total times your ad/content was shown. Funnel baseline.",
+    "CTR": "Click-Through Rate = Clicks / Impressions. Measures creative + targeting pull.",
+    "Click → Lead": "Leads / Clicks. Measures landing page friction and offer.",
+    "Lead → MQL": "MQL / Leads. Measures lead quality and scoring rules.",
+    "MQL → SQL": "SQL / MQL. Measures marketing–sales alignment + qualification.",
+    "SQL → Won": "Won / SQL. Measures close rate / sales execution.",
 }
 
 OBJECTIVES = [
-    "Medir eficiencia del funnel por etapa (conversión vs paso anterior).",
-    "Detectar cuellos de botella para priorizar optimizaciones (landing, scoring, ventas).",
-    "Comparar rendimiento por empleado para evaluar impacto y coaching.",
+    "Measure funnel efficiency by stage (conversion vs previous stage).",
+    "Detect bottlenecks to prioritize optimizations (landing, scoring, sales).",
+    "Compare performance by employee for coaching and impact assessment.",
 ]
 
 
@@ -83,6 +82,7 @@ def make_dummy_funnel(seed=11):
     mql = min(mql, lead)
     sql = min(sql, mql)
     won = min(won, sql)
+
     return [base, click, lead, mql, sql, won]
 
 
@@ -97,13 +97,14 @@ def split_by_employees(all_counts, seed=11):
         factor = weights[i] * float(np.clip(rng.normal(1.0, 0.08), 0.85, 1.15))
         counts = [int(c * factor) for c in all_counts]
         for k in range(1, len(counts)):
-            counts[k] = min(counts[k], counts[k-1])
+            counts[k] = min(counts[k], counts[k - 1])
         per_emp[e] = counts
 
     summed = [0] * len(all_counts)
     for e in emps:
         for i in range(len(all_counts)):
             summed[i] += per_emp[e][i]
+
     per_emp["All"] = summed
     return per_emp
 
@@ -124,7 +125,7 @@ def make_3_months_kpis(counts_now, seed=77):
             float(np.clip(rng.normal(0, 0.03), -0.05, 0.05))
         vals = (base * drift).astype(int)
         for k in range(1, len(vals)):
-            vals[k] = min(vals[k], vals[k-1])
+            vals[k] = min(vals[k], vals[k - 1])
 
         imp, clk, lead, mql, sql, won = vals
 
@@ -145,6 +146,7 @@ def make_3_months_kpis(counts_now, seed=77):
             "mql_to_sql": safe_pct(sql, mql),
             "sql_to_won": safe_pct(won, sql),
         })
+
     return pd.DataFrame(rows)
 
 
@@ -157,9 +159,9 @@ DATA_BY_EMP = split_by_employees(BASE_COUNTS, seed=11)
 # =========================================================
 def fmt_int(n: int) -> str:
     if n >= 1_000_000:
-        return f"{n/1_000_000:.2f}M"
+        return f"{n / 1_000_000:.2f}M"
     if n >= 1_000:
-        return f"{n/1_000:.1f}K"
+        return f"{n / 1_000:.1f}K"
     return str(n)
 
 
@@ -181,7 +183,7 @@ def build_funnel_bar(counts):
         if i == 0:
             labels.append(f"{fmt_int(c)} · Base")
         else:
-            labels.append(f"{fmt_int(c)} · {pct_prev_str(c, counts[i-1])}")
+            labels.append(f"{fmt_int(c)} · {pct_prev_str(c, counts[i - 1])}")
 
     fig = go.Figure(
         go.Bar(
@@ -200,7 +202,7 @@ def build_funnel_bar(counts):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font={"color": THEME["text"], "family": FONT_STACK, "size": 13},
-        margin={"l": 28, "r": 24, "t": 8, "b": 8},
+        margin={"l": 40, "r": 20, "t": 6, "b": 6},
         barcornerradius=18,
         autosize=True,
     )
@@ -215,7 +217,7 @@ def build_kpi_trend(df, col, title):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font={"color": THEME["text"], "family": FONT_STACK},
-        margin={"l": 20, "r": 20, "t": 40, "b": 20},
+        margin={"l": 22, "r": 22, "t": 48, "b": 22},
         title={"text": title, "x": 0.02, "xanchor": "left"},
     )
     fig.add_trace(
@@ -262,6 +264,7 @@ def help_icon(text):
 
 
 def kpi_card(kpi_id, title, value, subtitle, accent):
+    # Slightly better typographic hierarchy
     return html.Button(
         id={"type": "kpi", "kpi": kpi_id},
         n_clicks=0,
@@ -294,14 +297,17 @@ def kpi_card(kpi_id, title, value, subtitle, accent):
                             style={"display": "flex", "alignItems": "center"},
                             children=[
                                 html.Div(title, style={
-                                         "fontSize": "12.8px", "fontWeight": "950", "letterSpacing": "0.2px"}),
+                                    "fontSize": "13px",
+                                    "fontWeight": "950",
+                                    "letterSpacing": "0.2px"
+                                }),
                                 help_icon(KPI_HELP.get(
-                                    title, "KPI del dashboard.")),
+                                    title, "Dashboard KPI.")),
                             ],
                         ),
                         html.Div(
                             style={
-                                "width": "8px", "height": "8px",
+                                "width": "9px", "height": "9px",
                                 "borderRadius": THEME["pill"],
                                 "background": accent,
                                 "boxShadow": f"0 0 10px {accent}66",
@@ -319,14 +325,23 @@ def kpi_card(kpi_id, title, value, subtitle, accent):
                         "background": f"linear-gradient(90deg, {accent} 0%, rgba(255,255,255,0.06) 140%)",
                         "border": f"1px solid {accent}55",
                         "boxShadow": f"0 0 18px {accent}2f",
-                        "fontSize": "21px",
+                        "fontSize": "22px",          # main number bigger
                         "fontWeight": "950",
+                        "lineHeight": "1.0",
                     },
                 ),
                 html.Div(subtitle, style={
-                         "fontSize": "11.2px", "color": THEME["muted"], "marginTop": "10px", "fontWeight": "850"}),
-                html.Div("Click → evolución (3 meses)", style={
-                         "fontSize": "10.4px", "color": "rgba(243,244,255,0.45)", "marginTop": "6px", "fontWeight": "900"}),
+                    "fontSize": "11.5px",
+                    "color": THEME["muted"],
+                    "marginTop": "10px",
+                    "fontWeight": "900"
+                }),
+                html.Div("Click → 3-month trend", style={
+                    "fontSize": "10.6px",
+                    "color": "rgba(243,244,255,0.45)",
+                    "marginTop": "6px",
+                    "fontWeight": "900"
+                }),
             ],
         )
     )
@@ -373,10 +388,12 @@ def panel(title, subtitle=None, right=None, children=None):
 # =========================================================
 # APP
 # =========================================================
+# Note: requests_pathname_prefix is left default. Works on Render root domain.
 app = Dash(__name__)
 server = app.server
 app.title = "Marketing Funnel Dashboard"
 
+# -------------- HTML template + global CSS --------------
 app.index_string = f"""
 <!DOCTYPE html>
 <html>
@@ -402,10 +419,10 @@ app.index_string = f"""
         padding: 0;
         width: 100%;
         height: 100%;
-        overflow: hidden;  /* ✅ no scroll global */
         background: var(--bg);
         color: var(--text);
         font-family: var(--font);
+        overflow: hidden; /* ✅ no global scroll */
       }}
       #react-entry-point, #react-entry-point > div {{
         height: 100%;
@@ -435,7 +452,7 @@ app.index_string = f"""
       }}
 
       /* Dropdown */
-      .dash-dropdown {{ min-width: 180px; }}
+      .dash-dropdown {{ min-width: 200px; }}
       .Select-control {{
         background: rgba(0,0,0,0.20) !important;
         border-radius: var(--pill) !important;
@@ -444,7 +461,7 @@ app.index_string = f"""
         box-shadow: none !important;
       }}
       .Select-placeholder, .Select-value-label {{
-        color: rgba(243,244,255,0.90) !important;
+        color: rgba(243,244,255,0.92) !important;
         font-weight: 950 !important;
       }}
       .Select-menu-outer {{
@@ -495,22 +512,22 @@ app.index_string = f"""
         height: 100% !important;
       }}
 
-      /* ✅ KPI panel distribution */
-      .kpi-panel-wrap{{
+      /* KPI panel distribution */
+      .kpi-panel-wrap {{
         height: 100%;
         min-height: 0;
         display: flex;
         flex-direction: column;
         gap: 10px;
       }}
-      .kpi-grid{{
+      .kpi-grid {{
         flex: 1 1 auto;
         min-height: 0;
         display: grid;
         grid-template-columns: 1fr 1fr;
         grid-auto-rows: minmax(118px, auto);
         gap: 10px;
-        overflow: auto;              /* ✅ scroll inside */
+        overflow: auto; /* ✅ scroll inside KPI box only */
         padding-right: 2px;
       }}
       .kpi-grid::-webkit-scrollbar {{ width: 10px; }}
@@ -524,10 +541,12 @@ app.index_string = f"""
         border-radius: 999px;
       }}
 
+      /* Responsive */
       @media (max-width: 1200px) {{
         .grid-main {{ grid-template-columns: 1fr !important; }}
         .grid-details {{ grid-template-columns: 1fr !important; }}
         .kpi-grid {{ grid-template-columns: 1fr !important; }}
+        html, body {{ overflow: auto; }} /* allow on very small screens */
       }}
     </style>
   </head>
@@ -542,11 +561,14 @@ app.index_string = f"""
 </html>
 """
 
+# =========================================================
+# LAYOUT
+# =========================================================
 controls = html.Div(
     style={"display": "flex", "alignItems": "center",
            "gap": "10px", "flexWrap": "wrap"},
     children=[
-        html.Div("Empleado", style={"fontSize": "12px",
+        html.Div("Employee", style={"fontSize": "12px",
                  "color": THEME["muted"], "fontWeight": "950"}),
         dcc.Dropdown(
             id="employee",
@@ -574,7 +596,7 @@ overview = html.Div(
         children=[
             panel(
                 "Funnel",
-                "El % mostrado es vs el paso anterior.",
+                "Percentages are calculated vs previous stage.",
                 right=controls,
                 children=html.Div(
                     style={"height": "100%", "display": "flex",
@@ -589,19 +611,29 @@ overview = html.Div(
                                 "flex": "0 0 auto",
                             },
                             children=[
-                                html.Div("Objetivos del dashboard", style={
+                                html.Div("Dashboard goals", style={
                                          "fontWeight": "950", "fontSize": "13px"}),
                                 html.Ul(
-                                    style={"margin": "8px 0 0 18px", "padding": 0,
-                                           "color": THEME["muted"], "fontWeight": "850", "fontSize": "12px", "lineHeight": "1.45"},
+                                    style={
+                                        "margin": "8px 0 0 18px",
+                                        "padding": 0,
+                                        "color": THEME["muted"],
+                                        "fontWeight": "850",
+                                        "fontSize": "12px",
+                                        "lineHeight": "1.45",
+                                    },
                                     children=[html.Li(x) for x in OBJECTIVES],
                                 ),
                             ],
                         ),
                         html.Div(
                             className="funnel-wrap",
-                            style={"flex": "1 1 auto", "minHeight": 0,
-                                   "height": "clamp(360px, 52vh, 640px)"},
+                            style={
+                                "flex": "1 1 auto",
+                                "minHeight": 0,
+                                # hard cap so it never expands infinitely
+                                "height": "min(56vh, 640px)",
+                            },
                             children=[
                                 html.Div(
                                     className="funnel-bg",
@@ -623,7 +655,7 @@ overview = html.Div(
 
             panel(
                 "KPIs",
-                "Hover en “?” · Click en tarjeta → Details (3 meses).",
+                "Hover “?” • Click a KPI card → Details (3 months).",
                 children=html.Div(
                     className="kpi-panel-wrap",
                     children=[
@@ -636,6 +668,7 @@ overview = html.Div(
                                 "borderRadius": THEME["radius"],
                                 "background": "rgba(0,0,0,0.16)",
                                 "border": f"1px solid {THEME['border_soft']}",
+                                "fontSize": "12px",
                             },
                         ),
                     ],
@@ -660,22 +693,28 @@ details = html.Div(
         },
         children=[
             panel(
-                "Detalle KPI",
-                "Evolución trimestral (3 meses).",
+                "KPI detail",
+                "Last 3 months (monthly).",
                 children=html.Div(
                     style={"height": "100%", "display": "flex",
                            "flexDirection": "column", "minHeight": 0},
                     children=[
-                        dcc.Graph(id="kpi-trend", config={"displayModeBar": False}, style={
-                                  "flex": "1 1 auto", "minHeight": 0}),
-                        html.Div(id="kpi-detail-text", style={
-                                 "marginTop": "10px", "color": THEME["muted"], "fontWeight": "850", "fontSize": "12px"}),
+                        dcc.Graph(
+                            id="kpi-trend",
+                            config={"displayModeBar": False},
+                            style={"flex": "1 1 auto", "minHeight": 0}
+                        ),
+                        html.Div(
+                            id="kpi-detail-text",
+                            style={
+                                "marginTop": "10px", "color": THEME["muted"], "fontWeight": "850", "fontSize": "12px"},
+                        ),
                     ],
                 ),
             ),
             panel(
-                "Tabla rápida",
-                "Últimos 3 meses (mes a mes).",
+                "Quick table",
+                "Month by month values (3 months).",
                 children=html.Div(
                     id="kpi-table", style={"fontSize": "12px", "color": THEME["muted"], "fontWeight": "850"}),
             ),
@@ -689,8 +728,7 @@ app.layout = html.Div(
         "height": "100dvh",
         "minHeight": "100dvh",
         "overflow": "hidden",
-        "padding": "10px 12px",
-        "paddingBottom": "16px",
+        "padding": "10px 12px 16px",
         "fontFamily": FONT_STACK,
         "color": THEME["text"],
     },
@@ -708,6 +746,7 @@ app.layout = html.Div(
                 "minHeight": 0,
             },
             children=[
+                # Header
                 html.Div(
                     style={
                         "borderRadius": THEME["radius"],
@@ -727,8 +766,8 @@ app.layout = html.Div(
                             html.Div("Marketing Dashboard", style={
                                      "fontSize": "12px", "opacity": 0.92, "fontWeight": "950"}),
                             html.Div("Funnel Overview", style={
-                                     "fontSize": "26px", "fontWeight": "950", "lineHeight": "1.08"}),
-                            html.Div("Funcional pero divertido • Click KPIs = detalle", style={
+                                     "fontSize": "28px", "fontWeight": "950", "lineHeight": "1.06"}),
+                            html.Div("Functional but fun • KPI click = details", style={
                                      "fontSize": "12px", "opacity": 0.92, "marginTop": "4px", "fontWeight": "850"}),
                         ]),
                         html.Div(
@@ -742,15 +781,15 @@ app.layout = html.Div(
                                 "fontWeight": "950",
                             },
                             children=[
-                                html.Span("Rango base: ", style={
-                                          "opacity": 0.9}),
-                                html.Span("Dummy (3 meses)", style={
+                                html.Span("Range: ", style={"opacity": 0.9}),
+                                html.Span("Dummy (3 months)", style={
                                           "fontWeight": "950"}),
                             ],
                         ),
                     ],
                 ),
 
+                # Tabs
                 dcc.Tabs(
                     id="tabs",
                     value="tab-overview",
@@ -764,12 +803,12 @@ app.layout = html.Div(
                     ],
                 ),
 
+                # Content - internal scroll only
                 html.Div(
                     id="content-wrapper",
                     style={
                         "flex": "1 1 auto",
                         "minHeight": 0,
-                        "height": "calc(100dvh - 170px)",
                         "overflowY": "auto",
                         "overflowX": "hidden",
                         "paddingBottom": "12px",
@@ -781,10 +820,11 @@ app.layout = html.Div(
     ],
 )
 
-
 # =========================================================
 # CALLBACKS
 # =========================================================
+
+
 @app.callback(
     Output("overview-view", "style"),
     Output("details-view", "style"),
@@ -810,13 +850,13 @@ def update_overview(employee):
 
     cards = [
         kpi_card("impressions", "Impressions",
-                 f"{imp:,}", "Base del funnel", STAGE_COLORS["Impression"]),
+                 f"{imp:,}", "Funnel baseline", STAGE_COLORS["Impression"]),
         kpi_card("ctr", "CTR", f"{pct_prev(clk, imp):.2f}%",
-                 "Click / Impression", STAGE_COLORS["Click"]),
+                 "Clicks / Impressions", STAGE_COLORS["Click"]),
         kpi_card("click_to_lead", "Click → Lead",
-                 f"{pct_prev(lead, clk):.2f}%", "Lead / Click", STAGE_COLORS["Lead"]),
+                 f"{pct_prev(lead, clk):.2f}%", "Leads / Clicks", STAGE_COLORS["Lead"]),
         kpi_card("lead_to_mql", "Lead → MQL",
-                 f"{pct_prev(mql, lead):.2f}%", "MQL / Lead", STAGE_COLORS["MQL"]),
+                 f"{pct_prev(mql, lead):.2f}%", "MQL / Leads", STAGE_COLORS["MQL"]),
         kpi_card("mql_to_sql", "MQL → SQL",
                  f"{pct_prev(sql, mql):.2f}%", "SQL / MQL", STAGE_COLORS["SQL"]),
         kpi_card("sql_to_won", "SQL → Won",
@@ -835,15 +875,15 @@ def update_overview(employee):
 
     insights = html.Div(
         children=[
-            html.Div("Insights del rango (dummy)", style={
+            html.Div("Insights (dummy range)", style={
                      "fontWeight": "950", "fontSize": "13px", "marginBottom": "10px"}),
-            html.Div(f"• Mayor caída: {worst} · {rates[worst]:.2f}%", style={
+            html.Div(f"• Biggest drop: {worst} · {rates[worst]:.2f}%", style={
                      "fontWeight": "900", "color": THEME["muted"]}),
-            html.Div(f"• Mejor etapa: {best} · {rates[best]:.2f}%", style={
+            html.Div(f"• Best stage: {best} · {rates[best]:.2f}%", style={
                      "fontWeight": "900", "color": THEME["muted"], "marginTop": "6px"}),
-            html.Div(f"• Won total: {won:,}", style={
+            html.Div(f"• Total Won: {won:,}", style={
                      "fontWeight": "900", "color": THEME["muted"], "marginTop": "6px"}),
-            html.Div("Tip: dale click a un KPI para ver su evolución 3 meses.", style={
+            html.Div("Tip: Click any KPI card to see a 3-month trend.", style={
                      "marginTop": "10px", "color": THEME["muted2"], "fontWeight": "900", "fontSize": "11.5px"}),
         ]
     )
@@ -887,7 +927,7 @@ def render_details(selected_kpi, employee):
     df = make_3_months_kpis(counts, seed=seed)
 
     meta = {
-        "impressions": ("Impressions", "impressions", "Total de impresiones por mes."),
+        "impressions": ("Impressions", "impressions", "Total impressions per month."),
         "ctr": ("CTR", "ctr", "Clicks / Impressions (%)."),
         "click_to_lead": ("Click → Lead", "click_to_lead", "Leads / Clicks (%)."),
         "lead_to_mql": ("Lead → MQL", "lead_to_mql", "MQL / Leads (%)."),
@@ -896,8 +936,8 @@ def render_details(selected_kpi, employee):
     }
 
     title, col, expl = meta.get(selected_kpi, meta["ctr"])
-    fig = build_kpi_trend(df, col, f"{title} · Últimos 3 meses")
-    txt = f"Empleado: {employee} · {expl}"
+    fig = build_kpi_trend(df, col, f"{title} · Last 3 months")
+    txt = f"Employee: {employee} · {expl}"
 
     view = df[["month", col]].copy()
     if col in ["impressions", "clicks", "leads", "mql", "sql", "won"]:
@@ -910,7 +950,7 @@ def render_details(selected_kpi, employee):
         children=[
             html.Thead(
                 html.Tr([
-                    html.Th("Mes", style={"textAlign": "left", "padding": "10px 8px",
+                    html.Th("Month", style={"textAlign": "left", "padding": "10px 8px",
                             "borderBottom": "1px solid rgba(255,255,255,0.08)", "color": THEME["text"]}),
                     html.Th(title, style={"textAlign": "left", "padding": "10px 8px",
                             "borderBottom": "1px solid rgba(255,255,255,0.08)", "color": THEME["text"]}),
@@ -935,5 +975,5 @@ def render_details(selected_kpi, employee):
 # RUN
 # =========================================================
 if __name__ == "__main__":
-    print("Dashboard: http://127.0.0.1:8050")
+    print("Local: http://127.0.0.1:8050")
     app.run(host="0.0.0.0", port=8050, debug=True)
